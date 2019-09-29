@@ -1,24 +1,21 @@
-FROM fpco/stack-build:lts-14.6 as builder
+FROM ubuntu:eoan-20190916
 
-WORKDIR /usr/lib/gcc/x86_64-linux-gnu/7.4.0
-RUN cp crtbeginT.o crtbeginT.o.orig
-RUN cp crtbeginS.o crtbeginT.o
-
-ADD ./hlint /work
-WORKDIR /work
+ENV PATH $PATH:/hlint
+ENV HLINT_VERSION 2.2.2
+ENV VERSION ${HLINT_VERSION}_ubuntu_eon-20190916
 
 RUN set -e \
-  && stack setup \
-  && stack --system-ghc build --ghc-options='-fPIC -optl-static -optl-pthread -optc-Os' \
-  && stack --local-bin-path /work/bin install
+  && apt-get update \
+  && apt-get install wget -y \
+  && rm -rf /var/lib/apt/lists/* \
+  && wget \
+    https://github.com/ndmitchell/hlint/releases/download/v$HLINT_VERSION/hlint-$HLINT_VERSION-x86_64-linux.tar.gz \
+    -O hlint.tar.gz \
+  && tar xzvf hlint.tar.gz \
+  && ln -s /hlint-$HLINT_VERSION /hlint \
+  && rm -f hlint.tar.gz \
+  && hlint
 
-FROM alpine:3.10.2
-ENV PATH $PATH:/opt/hlint/bin
-ENV VERSION 2.2.2_lts-14.6_alpine3.10.2
-COPY --from=builder /work/bin/hlint /opt/hlint/bin/hlint
-COPY --from=builder /work/data /opt/hlint/bin/data
-WORKDIR /
-RUN hlint
+WORKDIR /hlint
 
-ENTRYPOINT ["/opt/hlint/bin/hlint"]
-
+ENTRYPOINT ["/hlint/hlint"]
